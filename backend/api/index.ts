@@ -20,7 +20,19 @@ async function bootstrap(): Promise<void> {
 }
 
 export default async function handler(req: Request, res: Response) {
-  if (!bootstrapped) bootstrapped = bootstrap();
-  await bootstrapped;
+  try {
+    if (!bootstrapped) bootstrapped = bootstrap();
+    await bootstrapped;
+  } catch (err) {
+    // Don't cache a rejected bootstrap — otherwise a warm instance stays broken
+    // even after the cause (e.g. a missing env var) is fixed. Reset so the next
+    // request retries, and surface the real reason instead of a blank 500.
+    bootstrapped = null;
+    console.error('Nest bootstrap failed:', err);
+    res
+      .status(500)
+      .json({ error: 'Bootstrap failed', message: (err as Error).message });
+    return;
+  }
   server(req, res);
 }
