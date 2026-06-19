@@ -1,0 +1,30 @@
+// Prisma schema for the Personal Task & Work Tracker — Task Management feature.
+// See Day3/Rainiel/spec.md §2 (Data Model) for the source of truth.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Lifecycle status of a task. Locked set for v1 (spec.md).
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+/// A single daily task owned by the (single) app user.
+model Task {
+  id          String     @id @default(uuid())
+  title       String     @db.VarChar(200)
+  description String?    @db.VarChar(2000)
+  status      TaskStatus @default(TODO)
+  ticketRef   String?    @db.VarChar(100)
+  dueDate     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}

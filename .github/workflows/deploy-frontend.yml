@@ -1,0 +1,92 @@
+# Phase 5 — Frontend deployment pipeline (React + Vite SPA).
+#
+# Flow: build → backup current live files → upload → purge CDN cache → verify →
+# auto-rollback from backup on failure.
+#
+# NOTE ON LOCATION: GitHub only runs workflows from the *repo root*
+# `.github/workflows/`. This file lives under Day5/Rainiel/ as the training
+# deliverable / template. Move it to the repo root to make it live.
+name: Deploy Frontend
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [dev, staging, production]
+      branch:
+        description: "Branch to deploy"
+        required: true
+        default: "main"
+
+concurrency:
+  group: deploy-frontend-${{ inputs.environment }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: Day5/Rainiel/frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      SITE_URL: ${{ vars.FRONTEND_SITE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Day5/Rainiel/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build assets
+        run: npm run build # outputs to dist/
+
+      # --- Backup current live files so we can restore on failure. ---
+      - name: Backup current live files
+        run: |
+          echo "TODO: sync current bucket → backup bucket"
+          echo "e.g. aws s3 sync s3://$BUCKET s3://$BUCKET-backup --delete"
+
+      # --- Upload new build to CDN/storage. ---
+      - name: Upload to CDN / storage
+        run: |
+          echo "TODO: upload dist/ to CDN/storage for ${{ inputs.environment }}"
+          echo "e.g. aws s3 sync dist/ s3://$BUCKET --delete"
+
+      - name: Purge CDN cache
+        run: |
+          echo "TODO: invalidate CDN cache so new assets go live"
+
+      # --- Verify the site responds. ---
+      - name: Verify deployment
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsS "$SITE_URL" >/dev/null; then echo "✅ site up"; exit 0; fi
+            echo "waiting for site... ($i/5)"; sleep 10
+          done
+          echo "❌ site verification failed"; exit 1
+
+      # --- Auto-rollback: restore previous files from backup. ---
+      - name: Rollback from backup
+        if: failure()
+        run: |
+          echo "Restoring previous build from backup bucket"
+          echo "e.g. aws s3 sync s3://$BUCKET-backup s3://$BUCKET --delete && purge cache"
+
+      - name: Notify result
+        if: always()
+        run: echo "Frontend deploy to ${{ inputs.environment }} finished with status=${{ job.status }}"

@@ -1,0 +1,97 @@
+# Phase 5 — Backend deployment pipeline (NestJS API).
+#
+# NOTE ON LOCATION: GitHub only runs workflows that live in the *repo root*
+# `.github/workflows/`. This file sits under Day5/Rainiel/ as the training
+# deliverable / template. To make it live, copy it to the repo root and adjust
+# the `working-directory` / path filters, then add the cloud secrets below.
+name: Deploy Backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [dev, staging, production]
+      branch:
+        description: "Branch to deploy"
+        required: true
+        default: "main"
+
+# Avoid two deploys racing to the same environment.
+concurrency:
+  group: deploy-backend-${{ inputs.environment }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: Day5/Rainiel/backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      # Set per-environment in GitHub → Settings → Environments → Variables.
+      HEALTH_URL: ${{ vars.BACKEND_HEALTH_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Day5/Rainiel/backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build artifact
+        run: npm run build
+
+      # --- Record the currently-live version so a failed deploy can roll back ---
+      - name: Capture current release tag (for rollback)
+        id: backup
+        run: echo "previous_ref=$(git rev-parse HEAD~1 2>/dev/null || echo main)" >> "$GITHUB_OUTPUT"
+
+      # --- Cloud deploy. Replace with your provider's action/CLI. ---
+      # e.g. azure/webapps-deploy, aws-actions/amazon-ecs-deploy-task-definition,
+      #      google-github-actions/deploy-cloudrun, etc.
+      - name: Deploy to cloud platform
+        run: |
+          echo "TODO: deploy dist/ + prisma to ${{ inputs.environment }}"
+          echo "Run DB migrations on the target: npx prisma migrate deploy"
+        # env: { AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }} }
+
+      # --- Verify: health endpoint must return 200 (see backend/src/health). ---
+      - name: Verify deployment (health check)
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsS "$HEALTH_URL"; then echo "✅ healthy"; exit 0; fi
+            echo "waiting for service... ($i/5)"; sleep 10
+          done
+          echo "❌ health check failed"; exit 1
+
+      # --- Auto-rollback: only runs if a previous step failed. ---
+      - name: Rollback to previous release
+        if: failure()
+        run: |
+          echo "Redeploying previous version: ${{ steps.backup.outputs.previous_ref }}"
+          echo "TODO: re-run cloud deploy pinned to the previous ref/image tag."
+
+      - name: Notify result
+        if: always()
+        run: echo "Backend deploy to ${{ inputs.environment }} finished with status=${{ job.status }}"

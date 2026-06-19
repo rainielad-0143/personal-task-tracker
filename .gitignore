@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Environment / secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Logs & OS cruft
+*.log
+npm-debug.log*
+.DS_Store
+
+# Per-machine Claude config (may contain MCP tokens) — never commit.
+.claude/settings.local.json
+
+# Phase 6 feedback data is local/personal; only the template is shared.
+feedback/*.json
+!feedback/_template.json
