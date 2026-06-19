@@ -1,30 +1,26 @@
 # CI — lint + test + build for the Task Tracker (frontend + backend).
-#
-# NOTE: GitHub only runs workflows from the *repo root* .github/workflows/.
-# This is the template referenced in CLAUDE.md; copy to the repo root and keep
-# the path filter so it only runs when this project changes.
 name: CI
 
 on:
   pull_request:
-    paths: ["Day5/Rainiel/**"]
+    paths: ["backend/**", "frontend/**", ".github/workflows/**"]
   push:
     branches: [main]
-    paths: ["Day5/Rainiel/**"]
+    paths: ["backend/**", "frontend/**", ".github/workflows/**"]
 
 jobs:
   backend:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: Day5/Rainiel/backend
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: Day5/Rainiel/backend/package-lock.json
+          cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npx prisma generate
       - run: npm run lint
@@ -35,14 +31,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: Day5/Rainiel/frontend
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: Day5/Rainiel/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm test
