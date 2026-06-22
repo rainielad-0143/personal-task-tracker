@@ -16,6 +16,14 @@ export function configureApp(app: INestApplication): void {
     }),
   );
 
-  // Allow browser frontends (Vite dev server / deployed SPA) to call the API.
-  app.enableCors();
+  // Restrict CORS to known frontend origins. Defaults cover the local Vite dev
+  // server and the deployed SPA; override/extend with CORS_ORIGIN (comma-separated).
+  const defaultOrigins = [
+    'http://localhost:5173',
+    'https://personal-task-tracker-kappa-ebon.vercel.app',
+  ];
+  const configured = process.env.CORS_ORIGIN?.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: configured ?? defaultOrigins });
 }

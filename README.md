@@ -106,7 +106,8 @@ Vercel projects from this same repo** (set a different *Root Directory* for each
 - **Environment variable:** `VITE_API_URL` = the backend project's URL, e.g.
   `https://<backend>.vercel.app` (set it before building — Vite inlines it).
 
-> CORS is currently open (`app.enableCors()`); lock it to the frontend origin
-> before any real production use.
+> CORS is restricted to known frontend origins (local Vite dev server + the
+> deployed SPA). Override the allowlist with `CORS_ORIGIN` (comma-separated
+> origins) if your frontend is hosted elsewhere.
 
 See `CLAUDE.md` for project conventions and `spec.md` / `requirements.md` for scope.
