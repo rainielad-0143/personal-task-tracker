@@ -35,24 +35,28 @@ describe('TasksController', () => {
     controller = module.get(TasksController);
   });
 
+  const user = { id: 'user-1', email: 'a@b.com' };
+
   it('rejects an empty update body with 400 (AC-12)', () => {
-    expect(() => controller.update('id', {})).toThrow(BadRequestException);
+    expect(() => controller.update(user, 'id', {})).toThrow(
+      BadRequestException,
+    );
     expect(service.update).not.toHaveBeenCalled();
   });
 
-  it('forwards a non-empty update to the service (AC-10)', () => {
+  it('forwards a non-empty update to the service with the user id (AC-10)', () => {
     service.update.mockResolvedValue({ id: 'id' });
 
-    void controller.update('id', { title: 'x' });
+    void controller.update(user, 'id', { title: 'x' });
 
-    expect(service.update).toHaveBeenCalledWith('id', { title: 'x' });
+    expect(service.update).toHaveBeenCalledWith(user.id, 'id', { title: 'x' });
   });
 
-  it('passes the status filter through to the service (AC-8)', () => {
+  it('passes the user id and status filter through to the service (AC-8)', () => {
     service.findAll.mockResolvedValue([]);
 
-    void controller.findAll({ status: TaskStatus.DONE });
+    void controller.findAll(user, { status: TaskStatus.DONE });
 
-    expect(service.findAll).toHaveBeenCalledWith(TaskStatus.DONE);
+    expect(service.findAll).toHaveBeenCalledWith(user.id, TaskStatus.DONE);
   });
 });

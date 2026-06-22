@@ -7,8 +7,28 @@ accomplishments, and blockers.
 - **Backend:** NestJS + TypeScript (`backend/`)
 - **Database:** PostgreSQL via Prisma ORM
 
-> Status: the **Tasks** domain (CRUD + status filter) is implemented. Time Entries,
-> Daily Reports, and Tickets are planned (see `spec.md` / `requirements.md`).
+> Status: multi-user **Auth** (email + password) and the per-user **Tasks** domain
+> (CRUD + status filter) are implemented. Time Entries, Daily Reports, and Tickets
+> are planned (see `spec.md` / `requirements.md`).
+
+## Authentication
+
+The app is multi-user: every task is owned by the account that created it, and the
+API only ever returns/accepts the signed-in user's own tasks.
+
+- **Sign up / sign in** with email + password (passwords are bcrypt-hashed).
+- The backend issues a **JWT** on register/login; the SPA stores it in
+  `localStorage` and sends it as `Authorization: Bearer <token>` on every request.
+- Tokens expire after `JWT_EXPIRES_IN` (default `7d`); a 401 logs the user out.
+
+**Backend env vars** (add to `backend/.env`):
+
+| Var | Required | Default | Notes |
+|---|---|---|---|
+| `DATABASE_URL` | yes | — | Postgres connection string |
+| `JWT_SECRET` | yes | — | long random string; the app refuses to boot without it |
+| `JWT_EXPIRES_IN` | no | `7d` | any `ms`-style duration (`15m`, `12h`, `30d`) |
+| `PORT` | no | `3000` | standalone server port |
 
 ## Quick start
 
@@ -63,10 +83,14 @@ Vercel projects from this same repo** (set a different *Root Directory* for each
 - **Root Directory:** `backend`
 - Runs as a Vercel function via `backend/api/index.ts` (it initialises Nest onto
   Express and never calls `listen()`); `backend/vercel.json` routes every path to it.
-- **Environment variable:** `DATABASE_URL` — point at a **serverless** Postgres
-  (Neon / Supabase / Vercel Postgres) and use its **pooled** connection string
-  (e.g. Neon's `-pooler` host, or append `?pgbouncer=true&connection_limit=1`).
-  A normal long-lived Postgres will exhaust connections under serverless.
+- **Environment variables:**
+  - `DATABASE_URL` — point at a **serverless** Postgres (Neon / Supabase / Vercel
+    Postgres) and use its **pooled** connection string (e.g. Neon's `-pooler` host,
+    or append `?pgbouncer=true&connection_limit=1`). A normal long-lived Postgres
+    will exhaust connections under serverless.
+  - `JWT_SECRET` — a long random secret (e.g. `openssl rand -base64 48`). **Required**;
+    the backend will not start without it. Set `JWT_EXPIRES_IN` too if you want a
+    non-default token lifetime.
 - `prisma generate` runs automatically on install (`postinstall`), and the schema
   includes the `rhel-openssl-3.0.x` binary target for Vercel's runtime.
 - **Run migrations once** against the prod DB (Vercel doesn't run them for you):
