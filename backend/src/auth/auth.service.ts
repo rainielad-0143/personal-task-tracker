@@ -4,7 +4,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+// Pure-JS bcrypt: the native `bcrypt` package ships a prebuilt .node binary
+// that fails to load on Vercel's serverless runtime, crashing the whole
+// function at import time (FUNCTION_INVOCATION_FAILED). bcryptjs is a drop-in,
+// API-compatible replacement with no native dependency.
+import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { AuthRequestDto } from './dto/auth-request.dto';
 import { JwtPayload } from './jwt.strategy';
