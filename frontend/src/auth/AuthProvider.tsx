@@ -13,7 +13,13 @@ import { AuthContext, type AuthStatus } from './auth-context'
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [status, setStatus] = useState<AuthStatus>('loading')
+  // Derive the starting status synchronously: with no stored token we are
+  // immediately anonymous; with one we stay "loading" until it's validated.
+  // (Doing this here rather than in the effect avoids a synchronous setState
+  // inside the effect body — see react-hooks/set-state-in-effect.)
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    getToken() ? 'loading' : 'anonymous',
+  )
 
   const logout = useCallback(() => {
     clearToken()
@@ -21,12 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('anonymous')
   }, [])
 
-  // On mount: if a token is stored, confirm it still works; otherwise we're anonymous.
+  // On mount, when a token is stored, confirm it still works. The setState
+  // calls live in async promise callbacks, not the effect body.
   useEffect(() => {
-    if (!getToken()) {
-      setStatus('anonymous')
-      return
-    }
+    if (!getToken()) return
     authApi
       .fetchCurrentUser()
       .then((u) => {
