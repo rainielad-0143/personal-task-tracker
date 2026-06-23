@@ -2,12 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
+import { AuthProvider } from './auth/AuthProvider'
 import { listTasks } from './api/tasksApi'
+import { fetchCurrentUser } from './api/authApi'
+import { setToken } from './api/authStorage'
 import type { Task, TaskStatus } from './types/task'
 
-// The component talks to the backend only through this module; mocking it lets
-// us control the timing of each list request to reproduce the race.
+// The component talks to the backend only through these modules; mocking them
+// lets us drive auth boot and control the timing of each list request.
 vi.mock('./api/tasksApi')
+vi.mock('./api/authApi')
 
 interface Deferred<T> {
   promise: Promise<T>
@@ -42,6 +46,13 @@ describe('App — list loading', () => {
 
   beforeEach(() => {
     calls = []
+    // A stored token + a resolving /auth/me boots the app straight into the
+    // authenticated task view.
+    setToken('test-token')
+    vi.mocked(fetchCurrentUser).mockResolvedValue({
+      id: 'u1',
+      email: 'me@example.com',
+    })
     vi.mocked(listTasks).mockImplementation((status?: TaskStatus) => {
       const d = deferred<Task[]>()
       calls.push({ status, d })
@@ -51,16 +62,25 @@ describe('App — list loading', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
   })
 
   it('ignores a stale response from a superseded filter (AC-16)', async () => {
     const user = userEvent.setup()
-    const allTasks = [makeTask({ title: 'A todo' }), makeTask({ title: 'A done', status: 'DONE' })]
+    const allTasks = [
+      makeTask({ title: 'A todo' }),
+      makeTask({ title: 'A done', status: 'DONE' }),
+    ]
     const doneTasks = [makeTask({ title: 'A done', status: 'DONE' })]
 
-    render(<App />)
+    render(
+      <AuthProvider>
+        <App />
+      </AuthProvider>,
+    )
 
-    // calls[0]: initial load for "All".
+    // Auth boots, then the task view issues its initial "All" load (calls[0]).
+    await waitFor(() => expect(calls).toHaveLength(1))
     await act(async () => {
       calls[0].d.resolve(allTasks)
     })

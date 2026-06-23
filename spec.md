@@ -33,6 +33,21 @@ view with create, edit, delete, status-change, and status-filter interactions.
 | `dueDate` | `DateTime \| null` | optional | date only is acceptable |
 | `createdAt` | `DateTime` | auto-set on create | |
 | `updatedAt` | `DateTime` | auto-updated on change | |
+| `userId` | `string` (UUID) | required, FK → `User.id` | owner; set from the auth token, never from the request body |
+
+> Tasks are **owned by a user**. Every task endpoint is scoped to the authenticated
+> user, so a user only ever sees and mutates their own tasks. `userId` is not part of
+> the DTOs — it is derived from the JWT.
+
+### `User` entity
+
+| Field | Type | Constraints | Notes |
+| :-- | :-- | :-- | :-- |
+| `id` | `string` (UUID) | PK, generated | |
+| `email` | `string` | required, unique | stored lowercased |
+| `passwordHash` | `string` | required | bcrypt hash; never returned by the API |
+| `createdAt` | `DateTime` | auto-set on create | |
+| `updatedAt` | `DateTime` | auto-updated on change | |
 
 ### Shared DTO shapes (frontend ↔ backend)
 
@@ -64,7 +79,24 @@ type UpdateTaskDto = Partial<CreateTaskDto>;
 
 ## 3. API
 
-Base path: `/tasks`
+### Auth
+
+Email + password; the server issues a JWT that the client sends as
+`Authorization: Bearer <token>` on every `/tasks` request.
+
+| Method | Path | Body | Success | Description |
+| :-- | :-- | :-- | :-- | :-- |
+| `POST` | `/auth/register` | `{ email, password }` | `201` + `{ token, user }` | Self-serve signup |
+| `POST` | `/auth/login` | `{ email, password }` | `200` + `{ token, user }` | Sign in |
+| `GET` | `/auth/me` | — | `200` + `user` | Current user (validates a stored token) |
+
+- `password` must be ≥ 8 chars; `email` is normalised to lowercase and must be unique.
+- `user` is `{ id, email }` — the password hash is never returned.
+
+### Tasks
+
+Base path: `/tasks` — **all routes require a valid bearer token** and operate only on
+the authenticated user's own tasks.
 
 | Method | Path | Body | Success | Description |
 | :-- | :-- | :-- | :-- | :-- |
@@ -77,7 +109,10 @@ Base path: `/tasks`
 **Error responses**
 
 - `400` — validation failure (missing/invalid fields, bad status value, empty update body).
-- `404` — task id not found (`GET`/`PATCH`/`DELETE`).
+- `401` — missing/invalid/expired token (any `/tasks` route, `/auth/me`), or wrong
+  credentials on `/auth/login`.
+- `404` — task id not found **or owned by another user** (`GET`/`PATCH`/`DELETE`).
+- `409` — `/auth/register` with an email that already exists.
 
 ## 4. UI Behavior
 

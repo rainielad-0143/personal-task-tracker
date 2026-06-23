@@ -11,34 +11,51 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { Task } from '@prisma/client';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { FindTasksQueryDto } from './dto/find-tasks-query.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthUser } from '../auth/jwt.strategy';
 
+// Every task route is owner-scoped: the guard supplies the user, and the
+// service filters by it so a user only ever sees or mutates their own tasks.
+@UseGuards(JwtAuthGuard)
 @Controller('tasks')
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post()
-  create(@Body() dto: CreateTaskDto): Promise<Task> {
-    return this.tasksService.create(dto); // 201 by default
+  create(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreateTaskDto,
+  ): Promise<Task> {
+    return this.tasksService.create(user.id, dto); // 201 by default
   }
 
   @Get()
-  findAll(@Query() query: FindTasksQueryDto): Promise<Task[]> {
-    return this.tasksService.findAll(query.status);
+  findAll(
+    @CurrentUser() user: AuthUser,
+    @Query() query: FindTasksQueryDto,
+  ): Promise<Task[]> {
+    return this.tasksService.findAll(user.id, query.status);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Task> {
-    return this.tasksService.findOne(id);
+  findOne(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<Task> {
+    return this.tasksService.findOne(user.id, id);
   }
 
   @Patch(':id')
   update(
+    @CurrentUser() user: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTaskDto,
   ): Promise<Task> {
@@ -52,12 +69,15 @@ export class TasksController {
         'Update body must contain at least one field',
       );
     }
-    return this.tasksService.update(id, dto);
+    return this.tasksService.update(user.id, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT) // AC-13: 204
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.tasksService.remove(id);
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    return this.tasksService.remove(user.id, id);
   }
 }
