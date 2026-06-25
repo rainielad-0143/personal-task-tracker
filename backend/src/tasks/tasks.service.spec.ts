@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TaskStatus } from '@prisma/client';
 import { TasksService } from './tasks.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,6 +20,9 @@ describe('TasksService', () => {
       update: jest.Mock;
       delete: jest.Mock;
     };
+    ticket: {
+      findFirst: jest.Mock;
+    };
   };
 
   beforeEach(async () => {
@@ -30,6 +33,9 @@ describe('TasksService', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+      },
+      ticket: {
+        findFirst: jest.fn(),
       },
     };
 
@@ -52,10 +58,35 @@ describe('TasksService', () => {
           description: null,
           status: undefined,
           ticketRef: null,
+          ticketId: null,
           dueDate: null,
           userId: USER_ID,
         },
       });
+    });
+
+    it('rejects a ticketId not owned by the user with 400 (AC-4b)', async () => {
+      prisma.ticket.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.create(USER_ID, { title: 'T', ticketId: 'ticket-x' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.task.create).not.toHaveBeenCalled();
+    });
+
+    it('persists a ticketId that belongs to the user', async () => {
+      prisma.ticket.findFirst.mockResolvedValue({ id: 'ticket-1' });
+      prisma.task.create.mockResolvedValue({ id: '1' });
+
+      await service.create(USER_ID, { title: 'T', ticketId: 'ticket-1' });
+
+      expect(prisma.ticket.findFirst).toHaveBeenCalledWith({
+        where: { id: 'ticket-1', userId: USER_ID, deletedAt: null },
+      });
+      const [arg] = prisma.task.create.mock.calls[0] as [
+        { data: { ticketId: string } },
+      ];
+      expect(arg.data.ticketId).toBe('ticket-1');
     });
 
     it('converts an ISO dueDate string to a Date', async () => {
@@ -80,7 +111,7 @@ describe('TasksService', () => {
       await service.findAll(USER_ID);
 
       expect(prisma.task.findMany).toHaveBeenCalledWith({
-        where: { userId: USER_ID },
+        where: { userId: USER_ID, deletedAt: null },
         orderBy: { createdAt: 'desc' },
       });
     });
@@ -91,7 +122,11 @@ describe('TasksService', () => {
       await service.findAll(USER_ID, TaskStatus.IN_PROGRESS);
 
       expect(prisma.task.findMany).toHaveBeenCalledWith({
-        where: { userId: USER_ID, status: TaskStatus.IN_PROGRESS },
+        where: {
+          userId: USER_ID,
+          deletedAt: null,
+          status: TaskStatus.IN_PROGRESS,
+        },
         orderBy: { createdAt: 'desc' },
       });
     });
@@ -104,7 +139,7 @@ describe('TasksService', () => {
 
       await expect(service.findOne(USER_ID, 'abc')).resolves.toBe(task);
       expect(prisma.task.findFirst).toHaveBeenCalledWith({
-        where: { id: 'abc', userId: USER_ID },
+        where: { id: 'abc', userId: USER_ID, deletedAt: null },
       });
     });
 
@@ -147,15 +182,20 @@ describe('TasksService', () => {
       await expect(service.remove(USER_ID, 'missing')).rejects.toThrow(
         NotFoundException,
       );
-      expect(prisma.task.delete).not.toHaveBeenCalled();
+      expect(prisma.task.update).not.toHaveBeenCalled();
     });
 
-    it('deletes the user’s own task (AC-13)', async () => {
+    it('soft-deletes the user’s own task by stamping deletedAt (AC-13)', async () => {
       prisma.task.findFirst.mockResolvedValue({ id: '1', userId: USER_ID });
-      prisma.task.delete.mockResolvedValue({ id: '1' });
+      prisma.task.update.mockResolvedValue({ id: '1' });
 
       await expect(service.remove(USER_ID, '1')).resolves.toBeUndefined();
-      expect(prisma.task.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+      const [arg] = prisma.task.update.mock.calls[0] as [
+        { where: { id: string }; data: { deletedAt: Date } },
+      ];
+      expect(arg.where).toEqual({ id: '1' });
+      expect(arg.data.deletedAt).toBeInstanceOf(Date);
+      expect(prisma.task.delete).not.toHaveBeenCalled();
     });
   });
 });

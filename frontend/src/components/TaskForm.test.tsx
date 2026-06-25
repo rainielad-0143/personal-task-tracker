@@ -3,6 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TaskForm } from './TaskForm'
 
+// TaskForm embeds TicketPicker, which fetches the user's tickets on mount.
+// Stub the data call so the form renders without hitting the network.
+vi.mock('../api/ticketsApi', () => ({
+  listTickets: vi.fn(() => Promise.resolve([])),
+}))
+
 describe('TaskForm', () => {
   it('blocks submit and shows an error when the title is empty', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
@@ -30,6 +36,7 @@ describe('TaskForm', () => {
       title: 'Write the spec',
       description: null,
       status: 'IN_PROGRESS',
+      ticketId: null,
       ticketRef: null,
       dueDate: null,
     })
@@ -41,6 +48,7 @@ describe('TaskForm', () => {
       title: 'Existing',
       description: 'desc',
       status: 'DONE' as const,
+      ticketId: null,
       ticketRef: 'PROJ-1',
       dueDate: '2026-07-01T00:00:00.000Z',
       createdAt: '2026-06-01T00:00:00.000Z',
