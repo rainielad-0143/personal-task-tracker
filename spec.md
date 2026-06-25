@@ -1,43 +1,57 @@
-# Spec — Task Management (CRUD)
+# Spec — Personal Task & Work Tracker
 
-**Feature:** Task Management for the **Personal Task & Work Tracker**
-**Status:** Draft (Day 2 — Spec Generation)
+**Status:** Draft
 **Author:** Rainiel
 **Source:** Derived from [`requirements.md`](requirements.md)
 
-> Decisions locked for v1 (from requirements open questions):
-> - **Statuses:** `TODO`, `IN_PROGRESS`, `DONE`
-> - **Delete:** hard delete (revisit Day 4)
-> - **Due date:** optional `dueDate` field included
-> - **Sort:** list defaults to newest-created first
+A single-user app to track daily tasks, ticket references, work hours, daily reports, and
+overall progress. This document is the **index** for the per-module specs and the home of
+the **shared conventions** every module follows.
 
----
+## Modules
 
-## 1. Overview
+| Module | Spec | Summary |
+| :-- | :-- | :-- |
+| **Tasks** | [`spec-tasks.md`](spec-tasks.md) | Daily tasks with status, due date, and an optional ticket link. |
+| **Tickets** | [`spec-tickets.md`](spec-tickets.md) | First-class references to external issue trackers (Jira/GitHub/Other). |
+| **Time Entries** | [`spec-time-entries.md`](spec-time-entries.md) | Work hours logged against a task and/or ticket via start/end timestamps. |
+| **Daily Reports** | [`spec-daily-reports.md`](spec-daily-reports.md) | Per-day accomplishments + blockers, with an auto roll-up of tasks done and hours logged. |
+| **Dashboard** | [`spec-dashboard.md`](spec-dashboard.md) | Read-only aggregate view across the other modules. |
 
-A single-user CRUD feature for daily tasks. The backend (NestJS + Prisma) exposes a REST
-API over a `Task` entity in PostgreSQL; the frontend (React + Vite + TS) provides a list
-view with create, edit, delete, status-change, and status-filter interactions.
+## Module relationships
 
-## 2. Data Model
+```
+User ──┬── Task ──────────────┐
+       ├── Ticket ─────────────┤
+       ├── TimeEntry ── (Task? / Ticket?)
+       └── DailyReport (per date)
 
-### `Task` entity
+Task.ticketId      → Ticket            (optional link)
+TimeEntry.taskId   → Task              (optional)
+TimeEntry.ticketId → Ticket            (optional)   // at least one of task/ticket required
+DailyReport        → derived: tasks completed + minutes logged on its date
+Dashboard          → read-only aggregates over all of the above
+```
 
-| Field | Type | Constraints | Notes |
-| :-- | :-- | :-- | :-- |
-| `id` | `string` (UUID) | PK, generated | |
-| `title` | `string` | required, 1–200 chars | |
-| `description` | `string \| null` | optional, ≤ 2000 chars | |
-| `status` | `TaskStatus` enum | required, default `TODO` | `TODO \| IN_PROGRESS \| DONE` |
-| `ticketRef` | `string \| null` | optional, ≤ 100 chars | free text, e.g. `PROJ-123` or URL |
-| `dueDate` | `DateTime \| null` | optional | date only is acceptable |
-| `createdAt` | `DateTime` | auto-set on create | |
-| `updatedAt` | `DateTime` | auto-updated on change | |
-| `userId` | `string` (UUID) | required, FK → `User.id` | owner; set from the auth token, never from the request body |
+## Shared Conventions
 
-> Tasks are **owned by a user**. Every task endpoint is scoped to the authenticated
-> user, so a user only ever sees and mutates their own tasks. `userId` is not part of
-> the DTOs — it is derived from the JWT.
+These apply to **every** module spec; module files do not repeat them.
+
+### Auth & user-scoping
+
+Email + password; the server issues a JWT sent as `Authorization: Bearer <token>` on every
+request. Every entity is **owned by a user**; `userId` is derived from the JWT and is never
+accepted in a request body. A user only ever sees and mutates their own (non-deleted) rows;
+accessing another user's row is indistinguishable from "not found".
+
+| Method | Path | Body | Success | Description |
+| :-- | :-- | :-- | :-- | :-- |
+| `POST` | `/auth/register` | `{ email, password }` | `201` + `{ token, user }` | Self-serve signup |
+| `POST` | `/auth/login` | `{ email, password }` | `200` + `{ token, user }` | Sign in |
+| `GET` | `/auth/me` | — | `200` + `user` | Current user (validates a stored token) |
+
+- `password` ≥ 8 chars; `email` normalised to lowercase and unique.
+- `user` is `{ id, email }` — the password hash is never returned.
 
 ### `User` entity
 
@@ -49,136 +63,34 @@ view with create, edit, delete, status-change, and status-filter interactions.
 | `createdAt` | `DateTime` | auto-set on create | |
 | `updatedAt` | `DateTime` | auto-updated on change | |
 
-### Shared DTO shapes (frontend ↔ backend)
+### Soft delete
 
-```ts
-type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+All user-owned entities (`Task`, `Ticket`, `TimeEntry`, `DailyReport`) carry a nullable
+`deletedAt`. `DELETE` sets `deletedAt` instead of removing the row; all reads exclude rows
+where `deletedAt` is non-null. This resolves `requirements.md` Q2/Q4: **logged hours are
+never silently destroyed** by deleting a task or ticket.
 
-interface Task {
-  id: string;
-  title: string;
-  description: string | null;
-  status: TaskStatus;
-  ticketRef: string | null;
-  dueDate: string | null; // ISO 8601
-  createdAt: string;       // ISO 8601
-  updatedAt: string;       // ISO 8601
-}
+- Deleting a **Ticket** that is referenced by tasks/time entries is allowed; the references
+  remain but resolve to a soft-deleted ticket, surfaced in the UI as "archived". Links are
+  not auto-nulled.
+- Deleting a **Task** does not delete its time entries; the entries keep their `taskId`.
 
-interface CreateTaskDto {
-  title: string;
-  description?: string | null;
-  status?: TaskStatus;       // defaults to "TODO"
-  ticketRef?: string | null;
-  dueDate?: string | null;
-}
+### Standard error responses
 
-// All fields optional; at least one must be present.
-type UpdateTaskDto = Partial<CreateTaskDto>;
-```
-
-## 3. API
-
-### Auth
-
-Email + password; the server issues a JWT that the client sends as
-`Authorization: Bearer <token>` on every `/tasks` request.
-
-| Method | Path | Body | Success | Description |
-| :-- | :-- | :-- | :-- | :-- |
-| `POST` | `/auth/register` | `{ email, password }` | `201` + `{ token, user }` | Self-serve signup |
-| `POST` | `/auth/login` | `{ email, password }` | `200` + `{ token, user }` | Sign in |
-| `GET` | `/auth/me` | — | `200` + `user` | Current user (validates a stored token) |
-
-- `password` must be ≥ 8 chars; `email` is normalised to lowercase and must be unique.
-- `user` is `{ id, email }` — the password hash is never returned.
-
-### Tasks
-
-Base path: `/tasks` — **all routes require a valid bearer token** and operate only on
-the authenticated user's own tasks.
-
-| Method | Path | Body | Success | Description |
-| :-- | :-- | :-- | :-- | :-- |
-| `POST` | `/tasks` | `CreateTaskDto` | `201` + `Task` | Create a task |
-| `GET` | `/tasks` | — | `200` + `Task[]` | List tasks; optional `?status=` filter |
-| `GET` | `/tasks/:id` | — | `200` + `Task` | Get one task |
-| `PATCH` | `/tasks/:id` | `UpdateTaskDto` | `200` + `Task` | Update a task |
-| `DELETE` | `/tasks/:id` | — | `204` | Delete a task |
-
-**Error responses**
-
-- `400` — validation failure (missing/invalid fields, bad status value, empty update body).
-- `401` — missing/invalid/expired token (any `/tasks` route, `/auth/me`), or wrong
-  credentials on `/auth/login`.
-- `404` — task id not found **or owned by another user** (`GET`/`PATCH`/`DELETE`).
-- `409` — `/auth/register` with an email that already exists.
-
-## 4. UI Behavior
-
-- **List view** — shows all tasks, newest-created first, displaying title, status badge,
-  ticket ref, and due date. Each row has edit and delete actions.
-- **Status filter** — a control (e.g. tabs/dropdown) to filter by `TODO`, `IN_PROGRESS`,
-  `DONE`, or "All".
-- **Create** — a form/modal collecting title (required), description, status, ticket ref,
-  due date. On success the new task appears in the list.
-- **Edit** — same form pre-filled; on success the row reflects the changes.
-- **Delete** — asks for confirmation, then removes the row on success.
-- **Empty state** — when there are no tasks (or none match the filter), show a clear empty
-  message instead of a blank list.
-
-## 5. Acceptance Criteria
-
-### Data & validation
-- **AC-1:** A `Task` is persisted with `id`, `title`, `status` (default `TODO`),
-  `createdAt`, and `updatedAt`; `description`, `ticketRef`, and `dueDate` are optional.
-- **AC-2:** Creating a task **without a title** (missing or empty/whitespace) is rejected
-  with `400` and the task is not persisted.
-- **AC-3:** Creating or updating a task with a **status outside** `TODO | IN_PROGRESS |
-  DONE` is rejected with `400`.
-- **AC-4:** `title` longer than 200 chars or `description` longer than 2000 chars is
-  rejected with `400`.
-
-### Create
-- **AC-5:** `POST /tasks` with a valid body returns `201` and the created `Task`, including
-  a generated `id` and timestamps.
-- **AC-6:** When `status` is omitted on create, the task is stored with status `TODO`.
-
-### Read / list
-- **AC-7:** `GET /tasks` returns all tasks ordered by `createdAt` descending (newest first).
-- **AC-8:** `GET /tasks?status=IN_PROGRESS` returns only tasks with that status; an invalid
-  `status` query value returns `400`.
-- **AC-9:** `GET /tasks/:id` returns the matching task (`200`), or `404` if no task has
-  that id.
-
-### Update
-- **AC-10:** `PATCH /tasks/:id` with valid partial data updates only the provided fields,
-  returns `200` + the updated task, and refreshes `updatedAt`.
-- **AC-11:** `PATCH /tasks/:id` for a non-existent id returns `404`.
-- **AC-12:** `PATCH /tasks/:id` with an **empty body** (no fields) is rejected with `400`.
-
-### Delete
-- **AC-13:** `DELETE /tasks/:id` removes the task and returns `204`; a subsequent
-  `GET /tasks/:id` returns `404`.
-- **AC-14:** `DELETE /tasks/:id` for a non-existent id returns `404`.
-
-### Frontend
-- **AC-15:** The list view renders all tasks newest-first with title, status, ticket ref,
-  and due date, and exposes edit + delete actions per task.
-- **AC-16:** The status filter narrows the visible tasks to the selected status, and "All"
-  restores the full list.
-- **AC-17:** Creating a task via the UI adds it to the list without a manual page reload.
-- **AC-18:** Editing a task via the UI reflects the updated values in the list.
-- **AC-19:** Deleting a task via the UI asks for confirmation and removes the row on success.
-- **AC-20:** When no tasks match the current view, an empty-state message is shown.
-
-## 6. Traceability
-
-| Area | Acceptance Criteria |
+| Code | Meaning |
 | :-- | :-- |
-| Data model & validation | AC-1 – AC-4 |
-| Create API | AC-5, AC-6 |
-| Read/List API | AC-7 – AC-9 |
-| Update API | AC-10 – AC-12 |
-| Delete API | AC-13, AC-14 |
-| Frontend UI | AC-15 – AC-20 |
+| `400` | Validation failure (missing/invalid fields, bad enum value, empty update body). |
+| `401` | Missing/invalid/expired token, or wrong credentials on `/auth/login`. |
+| `404` | Resource id not found, owned by another user, or already soft-deleted. |
+| `409` | Uniqueness conflict (e.g. `/auth/register` with an existing email; per-date upsert clashes). |
+
+### Conventions
+
+- IDs are UUID strings; all timestamps are ISO 8601 strings in DTOs.
+- Frontend and backend share DTO shapes (per `CLAUDE.md`).
+- Schema changes happen only via Prisma migrations.
+
+## Status
+
+This is a **spec/documentation** deliverable. No schema, backend, or frontend code is
+implemented by this document — each module is implemented later via `/feature`.
