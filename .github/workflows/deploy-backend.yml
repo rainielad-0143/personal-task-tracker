@@ -65,13 +65,20 @@ jobs:
         id: backup
         run: echo "previous_ref=$(git rev-parse HEAD~1 2>/dev/null || echo main)" >> "$GITHUB_OUTPUT"
 
+      # --- Apply DB migrations to the target BEFORE shipping new code, so the
+      #     schema is never behind the code that queries it. `migrate deploy`
+      #     only applies committed migrations (no prompts, safe for CI).
+      #     Set DATABASE_URL per-environment in GitHub → Settings → Environments → Secrets. ---
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       # --- Cloud deploy. Replace with your provider's action/CLI. ---
       # e.g. azure/webapps-deploy, aws-actions/amazon-ecs-deploy-task-definition,
       #      google-github-actions/deploy-cloudrun, etc.
       - name: Deploy to cloud platform
-        run: |
-          echo "TODO: deploy dist/ + prisma to ${{ inputs.environment }}"
-          echo "Run DB migrations on the target: npx prisma migrate deploy"
+        run: echo "TODO: deploy dist/ + prisma to ${{ inputs.environment }}"
         # env: { AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }} }
 
       # --- Verify: health endpoint must return 200 (see backend/src/health). ---
