@@ -22,3 +22,7 @@ npm-debug.log*
 # Phase 6 feedback data is local/personal; only the template is shared.
 feedback/*.json
 !feedback/_template.json
+
+# Docs
+reports
+.juan
