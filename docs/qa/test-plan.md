@@ -1,7 +1,7 @@
 # Test Plan — Task Management (CRUD)
 
 **Feature:** Task Management for the Personal Task & Work Tracker
-**Source of truth:** [`spec.md`](spec.md) §5 Acceptance Criteria, [`bug-report.md`](bug-report.md)
+**Source of truth:** [`spec.md`](../specs/spec.md) §5 Acceptance Criteria, [`bug-report.md`](bug-report.md)
 **Scope of this plan:** backend `tasks` module + frontend list/data flow (the Day-3 feature code)
 
 > Day-4 quality-loop focus: the **frontend data flow** extracted into

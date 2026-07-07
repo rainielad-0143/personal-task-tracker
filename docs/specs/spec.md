@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Author:** Rainiel
-**Source:** Derived from [`requirements.md`](requirements.md)
+**Source:** Derived from [`requirements.md`](../product/requirements.md)
 
 A single-user app to track daily tasks, ticket references, work hours, daily reports, and
 overall progress. This document is the **index** for the per-module specs and the home of

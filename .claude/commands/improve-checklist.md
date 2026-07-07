@@ -7,7 +7,7 @@ argument-hint: "[checklist-name] (optional; default = all)"
 Project: Personal Task & Work Tracker (see ../../CLAUDE.md).
 Phase 6 — convert recurring feedback into concrete checklist changes.
 Inputs: all of ../../feedback/*.json (excluding _template.json).
-Checklists live in: ../../review-notes.md, ../../test-plan.md, and these commands.
+Checklists live in: ../../docs/qa/review-notes.md, ../../docs/qa/test-plan.md, and these commands.
 </context>
 
 <task>

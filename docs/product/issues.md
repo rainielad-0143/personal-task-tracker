@@ -2,7 +2,7 @@
 
 **Feature:** Task Management for the **Personal Task & Work Tracker**
 **Repo:** [`framgia/sph-aidd-training`](https://github.com/framgia/sph-aidd-training)
-**Source spec:** [`spec.md`](spec.md) · **Requirements:** [`requirements.md`](requirements.md)
+**Source spec:** [`spec.md`](../specs/spec.md) · **Requirements:** [`requirements.md`](requirements.md)
 
 All issues are labeled `feature` + `day-3` and trace back to numbered acceptance
 criteria in `spec.md`.

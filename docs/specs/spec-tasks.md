@@ -3,7 +3,7 @@
 **Module:** Tasks · part of the **Personal Task & Work Tracker** (see [`spec.md`](spec.md) index)
 **Status:** Draft
 **Author:** Rainiel
-**Source:** Derived from [`requirements.md`](requirements.md)
+**Source:** Derived from [`requirements.md`](../product/requirements.md)
 
 > Decisions locked for v1:
 > - **Statuses:** `TODO`, `IN_PROGRESS`, `DONE`
