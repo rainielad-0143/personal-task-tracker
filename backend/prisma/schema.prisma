@@ -19,6 +19,20 @@ enum TaskStatus {
   DONE
 }
 
+/// External issue tracker a ticket points at (spec-tickets.md).
+enum Tracker {
+  JIRA
+  GITHUB
+  OTHER
+}
+
+/// Lifecycle status of a ticket (spec-tickets.md).
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
 /// A registered user. Auth is email + password (bcrypt-hashed); sessions are
 /// stateless JWTs, so nothing session-related is persisted here.
 model User {
@@ -28,7 +42,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tasks Task[]
+  tasks   Task[]
+  tickets Ticket[]
 }
 
 /// A single daily task owned by a user.
@@ -39,11 +54,40 @@ model Task {
   status      TaskStatus @default(TODO)
   ticketRef   String?    @db.VarChar(100)
   dueDate     DateTime?
+  deletedAt   DateTime?  // soft-delete marker (spec.md → Shared Conventions)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional link to a first-class ticket. SetNull is defensive only: tickets
+  // are soft-deleted, so the row (and this FK) survives an "archive".
+  ticketId String?
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([ticketId])
+}
+
+/// A first-class reference to an external issue tracker item, owned by a user
+/// (spec-tickets.md). Uniqueness of `key` per live ticket is enforced in the
+/// service so a key can be reused after a ticket is soft-deleted.
+model Ticket {
+  id        String       @id @default(uuid())
+  key       String       @db.VarChar(100)
+  title     String?      @db.VarChar(200)
+  tracker   Tracker      @default(OTHER)
+  url       String?      @db.VarChar(500)
+  status    TicketStatus @default(OPEN)
+  deletedAt DateTime?    // soft-delete marker (spec.md → Shared Conventions)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
 
   @@index([userId])
 }

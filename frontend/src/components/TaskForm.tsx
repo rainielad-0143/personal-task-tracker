@@ -6,6 +6,7 @@ import {
   type Task,
   type TaskStatus,
 } from '../types/task'
+import { TicketPicker } from './TicketPicker'
 
 interface Props {
   /** The task being edited, or null when creating a new one. */
@@ -20,6 +21,9 @@ export function TaskForm({ initial, onSubmit, onCancel }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [status, setStatus] = useState<TaskStatus>(initial?.status ?? 'TODO')
+  const [ticketId, setTicketId] = useState<string | null>(
+    initial?.ticketId ?? null,
+  )
   const [ticketRef, setTicketRef] = useState(initial?.ticketRef ?? '')
   const [dueDate, setDueDate] = useState(
     initial?.dueDate ? initial.dueDate.slice(0, 10) : '',
@@ -40,6 +44,7 @@ export function TaskForm({ initial, onSubmit, onCancel }: Props) {
         title: title.trim(),
         description: description.trim() || null,
         status,
+        ticketId,
         ticketRef: ticketRef.trim() || null,
         dueDate: dueDate || null,
       })
@@ -91,8 +96,16 @@ export function TaskForm({ initial, onSubmit, onCancel }: Props) {
               ))}
             </select>
           </label>
+          <label htmlFor="task-ticket-picker">
+            Linked ticket
+          </label>
+          <TicketPicker
+            id="task-ticket-picker"
+            value={ticketId}
+            onChange={setTicketId}
+          />
           <label>
-            Ticket reference
+            Ticket reference (free text)
             <input
               value={ticketRef}
               onChange={(e) => setTicketRef(e.target.value)}

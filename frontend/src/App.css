@@ -249,6 +249,51 @@ button.link:hover:not(:disabled) {
   color: var(--color-text-label);
 }
 
+/* Top-level Tasks / Tickets switcher */
+.app-nav {
+  display: flex;
+  gap: 0.35rem;
+  max-width: 820px;
+  margin: 1.25rem auto 0;
+  padding: 0 1.25rem;
+}
+
+.nav-tab {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  padding: 0.45rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.nav-tab:hover:not(.active) {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.nav-tab.active {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-text-label);
+}
+
+/* Ticket list status/tracker filters */
+.ticket-filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.ticket-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
 /* Task list */
 .task-list {
   list-style: none;

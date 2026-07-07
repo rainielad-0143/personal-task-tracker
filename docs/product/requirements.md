@@ -66,9 +66,10 @@ solid to build on.
 
 - **Q1:** What is the exact set of allowed statuses? Proposed: `TODO`, `IN_PROGRESS`,
   `DONE`. Should a `BLOCKED` or `CANCELLED` status exist now, or wait for Day 4 hardening?
-- **Q2:** Should deleting a task be a **hard delete** or a **soft delete** (archive)? Soft
-  delete is safer once Time Entries reference tasks — decide before building Day 3.
+- **Q2:** ~~Should deleting a task be a **hard delete** or a **soft delete** (archive)?~~
+  **LOCKED → soft delete** (`deletedAt`) across all entities. See [`spec.md` → Shared Conventions](../specs/spec.md#shared-conventions).
 - **Q3:** Is a **due date** field needed in v1, or is it deferred to a later day?
-- **Q4:** When a task is deleted, what happens to any future Time Entries linked to it?
-  (Likely cascade or restrict — depends on Q2.)
+- **Q4:** ~~When a task is deleted, what happens to any future Time Entries linked to it?~~
+  **LOCKED → preserved.** Soft-deleting a task/ticket never removes its time entries; the
+  links remain and resolve to an "archived" row. See [`spec-time-entries.md`](../specs/spec-time-entries.md) AC-10.
 - **Q5:** Default sort order of the task list — by created date (newest first) or by status?

@@ -20,6 +20,7 @@ export interface Task {
   title: string
   description: string | null
   status: TaskStatus
+  ticketId: string | null
   ticketRef: string | null
   dueDate: string | null // ISO 8601
   createdAt: string // ISO 8601
@@ -30,6 +31,7 @@ export interface CreateTaskInput {
   title: string
   description?: string | null
   status?: TaskStatus
+  ticketId?: string | null
   ticketRef?: string | null
   dueDate?: string | null
 }

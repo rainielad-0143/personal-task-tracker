@@ -3,7 +3,12 @@ import { ApiError, createTask, listTasks } from './tasksApi'
 import { UNAUTHORIZED_EVENT } from './http'
 import { setToken } from './authStorage'
 
-const BASE = 'http://localhost:3000'
+// Resolve the base URL exactly as http.ts does, so the assertions hold whatever
+// VITE_API_URL is set to locally (e.g. a dev backend on another port).
+const BASE = (
+  (import.meta.env.VITE_API_URL as string | undefined) ??
+  'http://localhost:3000'
+).replace(/\/$/, '')
 
 /** Builds a fake fetch Response. */
 function fakeResponse(body: {

@@ -4,6 +4,7 @@ import {
   IsISO8601,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -33,6 +34,10 @@ export class CreateTaskDto {
   @IsString()
   @MaxLength(100)
   ticketRef?: string | null;
+
+  @IsOptional()
+  @IsUUID() // links to a first-class Ticket; ownership checked in the service (AC-4b)
+  ticketId?: string | null;
 
   @IsOptional()
   @IsISO8601() // accepts an ISO 8601 date/date-time string

@@ -28,7 +28,7 @@ references, daily reports, work hours, accomplishments, and blockers.
 
 - `frontend/` — React + Vite SPA (TypeScript)
 - `backend/` — NestJS API (TypeScript) + Prisma schema in `backend/prisma/`
-- `spec.md`, `requirements.md`, `issues.md`, `bug-report.md` — specs, scope, notes
+- `docs/specs/`, `docs/product/requirements.md`, `docs/product/issues.md`, `docs/qa/bug-report.md` — specs, scope, notes
 - `.claude/` — Claude Code config & slash commands (see below)
 - `.github/` — issue templates (Epic, Sub-issue, Bug) and CI workflow
 

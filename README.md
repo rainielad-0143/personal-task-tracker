@@ -9,7 +9,7 @@ accomplishments, and blockers.
 
 > Status: multi-user **Auth** (email + password) and the per-user **Tasks** domain
 > (CRUD + status filter) are implemented. Time Entries, Daily Reports, and Tickets
-> are planned (see `spec.md` / `requirements.md`).
+> are planned (see `docs/specs/spec.md` / `docs/product/requirements.md`).
 
 ## Authentication
 
@@ -110,4 +110,4 @@ Vercel projects from this same repo** (set a different *Root Directory* for each
 > deployed SPA). Override the allowlist with `CORS_ORIGIN` (comma-separated
 > origins) if your frontend is hosted elsewhere.
 
-See `CLAUDE.md` for project conventions and `spec.md` / `requirements.md` for scope.
+See `CLAUDE.md` for project conventions and `docs/specs/spec.md` / `docs/product/requirements.md` for scope.

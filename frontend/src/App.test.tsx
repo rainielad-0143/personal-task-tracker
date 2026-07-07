@@ -31,6 +31,7 @@ function makeTask(partial: Partial<Task> & { title: string }): Task {
     id: partial.title,
     description: null,
     status: 'TODO',
+    ticketId: null,
     ticketRef: null,
     dueDate: null,
     createdAt: '2026-06-01T00:00:00.000Z',

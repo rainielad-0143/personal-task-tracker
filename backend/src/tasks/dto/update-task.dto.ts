@@ -4,6 +4,7 @@ import {
   IsISO8601,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -38,6 +39,10 @@ export class UpdateTaskDto {
   @IsString()
   @MaxLength(100)
   ticketRef?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  ticketId?: string | null;
 
   @IsOptional()
   @IsISO8601()

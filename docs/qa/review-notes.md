@@ -1,7 +1,7 @@
 # Code Review — Day-3 Task Management feature
 
 **Reviewed:** `backend/src/tasks/**`, `frontend/src/**`
-**Against:** [`spec.md`](spec.md) AC-1…AC-20, project conventions in `CLAUDE.md`
+**Against:** [`spec.md`](../specs/spec.md) AC-1…AC-20, project conventions in `CLAUDE.md`
 **Outcome:** Solid baseline. One structural issue flagged and refactored this loop; the rest are
 minor / hardening notes. No correctness blockers found in the backend.
 
